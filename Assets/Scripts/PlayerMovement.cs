@@ -12,27 +12,33 @@ public class PlayerMovement : MonoBehaviour
     public Transform groundCheck;
     public float reorientSpeed = 10f;
     public float inputDeadzone = 0.05f;
+    public float platformProbeDistance = 3.5f;
+    public float carryCoyoteTime = 0.2f;
 
     Vector3 velocity;
     bool isGrounded;
     bool jumpPressed;
 
+    Transform currentPlatform;
+    Vector3 lastPlatformPos;
+    float carryTimer;
+
     void OnEnable()
     {
-        if (GravityManager.Instance != null)
-            GravityManager.Instance.OnGravityChanged += OnGravityChanged;
+        if (GravityManager.Instance != null) GravityManager.Instance.OnGravityChanged += OnGravityChanged;
     }
 
     void OnDisable()
     {
-        if (GravityManager.Instance != null)
-            GravityManager.Instance.OnGravityChanged -= OnGravityChanged;
+        if (GravityManager.Instance != null) GravityManager.Instance.OnGravityChanged -= OnGravityChanged;
     }
 
     void OnGravityChanged(Vector3 newDown)
     {
         Vector3 g = newDown.normalized;
         velocity = Vector3.Project(velocity, g);
+        currentPlatform = null;
+        carryTimer = 0f;
         AntiStuckNudge(g, 0.35f);
         SnapToSurface(g, 0.6f);
     }
@@ -42,7 +48,14 @@ public class PlayerMovement : MonoBehaviour
         Vector3 gravityDir = GravityManager.Instance ? GravityManager.Instance.GravityDir : Vector3.down;
         Vector3 gravity = gravityDir * gravityStrength;
 
-        isGrounded = Physics.CheckSphere(groundCheck.position, groundCheckRadius, groundMask);
+        if (currentPlatform != null)
+        {
+            Vector3 delta = currentPlatform.position - lastPlatformPos;
+            if (delta.sqrMagnitude > 0f) controller.Move(delta);
+            lastPlatformPos = currentPlatform.position;
+        }
+
+        isGrounded = Physics.CheckSphere(groundCheck.position, groundCheckRadius, groundMask) || controller.isGrounded;
 
         if (isGrounded && Vector3.Dot(velocity, gravityDir) > 0f)
             velocity -= gravityDir * Vector3.Dot(velocity, gravityDir);
@@ -59,8 +72,7 @@ public class PlayerMovement : MonoBehaviour
             controller.Move(move * speed * Time.deltaTime);
         }
 
-        if (Input.GetButtonDown("Jump"))
-            jumpPressed = true;
+        if (Input.GetButtonDown("Jump")) jumpPressed = true;
 
         if (jumpPressed && isGrounded)
         {
@@ -68,6 +80,8 @@ public class PlayerMovement : MonoBehaviour
             velocity = -gravityDir * jumpSpeed;
             jumpPressed = false;
             isGrounded = false;
+            currentPlatform = null;
+            carryTimer = 0f;
         }
 
         float alignment = velocity.sqrMagnitude > 0f ? Vector3.Dot(velocity.normalized, gravityDir) : 0f;
@@ -80,6 +94,40 @@ public class PlayerMovement : MonoBehaviour
 
         Quaternion targetRot = Quaternion.FromToRotation(transform.up, -gravityDir) * transform.rotation;
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, reorientSpeed * Time.deltaTime);
+
+        ProbePlatform();
+    }
+
+    void ProbePlatform()
+    {
+        Vector3 down = -transform.up;
+        float radius = Mathf.Max(0.1f, controller.radius * 0.95f);
+        Vector3 origin = groundCheck != null ? groundCheck.position : transform.position;
+
+        bool latched = false;
+        if (Physics.SphereCast(origin, radius, down, out RaycastHit hit, platformProbeDistance, ~0, QueryTriggerInteraction.Ignore))
+        {
+            var mp = hit.collider.GetComponentInParent<MovingPlatform>();
+            if (mp != null)
+            {
+                if (currentPlatform != mp.transform)
+                {
+                    currentPlatform = mp.transform;
+                    lastPlatformPos = currentPlatform.position;
+                }
+                latched = true;
+            }
+        }
+
+        if (latched)
+        {
+            carryTimer = carryCoyoteTime;
+        }
+        else
+        {
+            if (carryTimer > 0f) carryTimer -= Time.deltaTime;
+            else currentPlatform = null;
+        }
     }
 
     void AntiStuckNudge(Vector3 gravityDir, float dist)

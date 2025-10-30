@@ -1,28 +1,40 @@
-using UnityEngine;
 using System;
+using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class GravityManager : MonoBehaviour
 {
     public static GravityManager Instance { get; private set; }
     public float gravityStrength = 9.81f;
-    [Range(0f,1f)] public float hysteresisDot = 0.995f;
     public Vector3 GravityDir { get; private set; } = Vector3.down;
     public event Action<Vector3> OnGravityChanged;
 
     void Awake()
     {
-        if (Instance != this && Instance != null) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        Physics.gravity = GravityDir * gravityStrength;
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this) SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        SetGravityDirection(Vector3.down);
     }
 
     public void SetGravityDirection(Vector3 worldDown)
     {
-        if (worldDown.sqrMagnitude < 0.0001f) return;
-        Vector3 desired = worldDown.normalized;
-        Vector3 snapped = SnapToAxis(desired);
-        if (Vector3.Dot(GravityDir, snapped) >= hysteresisDot) return;
+        if (worldDown.sqrMagnitude < 1e-6f) return;
+        Vector3 snapped = SnapToAxis(worldDown.normalized);
+        if (snapped == GravityDir) return;
         GravityDir = snapped;
+        Physics.gravity = GravityDir * gravityStrength;
         OnGravityChanged?.Invoke(GravityDir);
     }
 
