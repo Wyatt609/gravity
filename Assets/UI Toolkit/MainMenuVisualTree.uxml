@@ -1,7 +1,7 @@
 <ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
     <Style src="project://database/Assets/UI%20Toolkit/MainMenuStyle.uss?fileID=7433441132597879392&amp;guid=a3e6f03d59105594bbaaab45b8627dca&amp;type=3#MainMenuStyle" />
     <ui:VisualElement name="Container" style="flex-grow: 1;">
-        <ui:Label text="&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;&#x9;      Main Menu" emoji-fallback-support="false" name="MainMenu" class="header" style="color: rgb(255, 242, 242);" />
+        <ui:Label text=" Main Menu" emoji-fallback-support="false" name="MainMenu" class="header" style="color: rgb(255, 242, 242); height: 44px; -unity-text-align: upper-center;" />
         <ui:Button text="Play" name="Play" enable-rich-text="true" style="height: 178px; width: 600px; white-space: pre; right: auto; left: 650px; font-size: 50px;" />
         <ui:Button text="Exit" name="Exit" enable-rich-text="true" style="height: 178px; width: 600px; white-space: pre; right: auto; left: 650px; font-size: 50px;" />
     </ui:VisualElement>
